@@ -1,5 +1,43 @@
    <!DOCTYPE html>
 <html>
-<head><title>ClipFlop</title></head>
-<body><h1>ClipFlop - Coming Soon</h1></body>
-</html>                                                                                                                         
+<head>
+  <title>ClipFlop</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; }
+    input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; }
+    #result { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; display: none; }
+  </style>
+</head>
+<body>
+  <h1>ClipFlop</h1>
+  <p>Paste a video link or upload an MP4 to find the best moments.</p>
+
+  <label>Video link:</label>
+  <input type="text" id="videoLink" placeholder="https://...">
+
+  <label>Or upload MP4:</label>
+  <input type="file" id="videoFile" accept="video/mp4">
+
+  <button onclick="processVideo()">Find Highlights</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function processVideo() {
+      const link = document.getElementById('videoLink').value;
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'block';
+      resultDiv.textContent = 'Processing...';
+
+      const response = await fetch('/api/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoLink: link })
+      });
+
+      const data = await response.json();
+      resultDiv.textContent = data.message;
+    }
+  </script>
+</body>
+</html>
