@@ -43,7 +43,7 @@ module.exports = async function (req, res) {
 
     var r;
     var data;
-    var attempts = 3;
+    var attempts = 2;
 
     for (var i = 1; i <= attempts; i++) {
       r = await fetch(
@@ -64,7 +64,7 @@ module.exports = async function (req, res) {
       var busy = r.status === 429 || r.status === 503;
       if (!busy || i === attempts) break;
 
-      await wait(3000);
+      await wait(1000);
     }
 
     if (!r.ok) {
