@@ -1,11 +1,12 @@
-module.exports = function handler(req, res) {
+module.exports = (req, res) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { videoLink } = req.body;
+  const body = req.body || {};
+  const videoLink = body.videoLink;
 
   res.status(200).json({
-    message: Received video: ${videoLink || 'uploaded file'}. Highlight detection coming soon!
+    message: 'Received video: ' + (videoLink || 'uploaded file') + '. Highlight detection coming soon!'
   });
-}
+};
