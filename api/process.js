@@ -1,3 +1,7 @@
+function wait(ms) {
+  return new Promise(function (resolve) { setTimeout(resolve, ms); });
+}
+
 module.exports = async function (req, res) {
   try {
     if (req.method !== 'POST') {
@@ -28,26 +32,40 @@ module.exports = async function (req, res) {
     var videoUrl = 'https://www.youtube.com/watch?v=' + id;
     var prompt = 'Watch this video and find the 5 best moments for short clips. For each one give: start time, end time (mm:ss), a short title, and one sentence on why it works. Use a plain numbered list, no markdown.';
 
-    var r = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { file_data: { file_uri: videoUrl } },
-              { text: prompt }
-            ]
-          }]
-        })
-      }
-    );
+    var requestBody = JSON.stringify({
+      contents: [{
+        parts: [
+          { file_data: { file_uri: videoUrl } },
+          { text: prompt }
+        ]
+      }]
+    });
 
-    var data = await r.json();
+    var r;
+    var data;
+    var attempts = 3;
+
+    for (var i = 1; i <= attempts; i++) {
+      r = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+          },
+          body: requestBody
+        }
+      );
+      data = await r.json();
+
+      if (r.ok) break;
+
+      var busy = r.status === 429 || r.status === 503;
+      if (!busy || i === attempts) break;
+
+      await wait(3000);
+    }
 
     if (!r.ok) {
       var msg = data.error && data.error.message ? data.error.message : String(r.status);
@@ -64,3 +82,4 @@ module.exports = async function (req, res) {
     return res.status(500).json({ message: 'Error: ' + e.message });
   }
 };
+
