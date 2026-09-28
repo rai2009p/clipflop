@@ -29,7 +29,7 @@ module.exports = async function (req, res) {
     var prompt = 'Watch this video and find the 5 best moments for short clips. For each one give: start time, end time (mm:ss), a short title, and one sentence on why it works. Use a plain numbered list, no markdown.';
 
     var r = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
       {
         method: 'POST',
         headers: {
