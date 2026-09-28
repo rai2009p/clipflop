@@ -1,12 +1,13 @@
-   <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <title>ClipFlop</title>
   <style>
     body { font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; }
     input, button { display: block; width: 100%; margin: 10px 0; padding: 10px; }
-   #result { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; display: none; white-space: pre-wrap; }
-
+    #result { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; display: none; }
+    .moment { margin-bottom: 14px; }
+    .moment a { font-weight: bold; color: #0b57d0; }
   </style>
 </head>
 <body>
@@ -24,20 +25,58 @@
   <div id="result"></div>
 
   <script>
-    async function processVideo() {
-      const link = document.getElementById('videoLink').value;
-      const resultDiv = document.getElementById('result');
-      resultDiv.style.display = 'block';
-      resultDiv.textContent = 'Processing...';
+    function getVideoId(link) {
+      var l = link;
+      try { l = decodeURIComponent(link); } catch (e) {}
+      var m = l.match(/(?:youtu\.be\/|v=|shorts\/)([A-Za-z0-9_-]{11})/);
+      return m ? m[1] : '';
+    }
 
-      const response = await fetch('/api/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoLink: link })
+    function toSeconds(t) {
+      var p = t.split(':').map(Number);
+      return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
+    }
+
+    function showResult(text, id) {
+      var box = document.getElementById('result');
+      box.textContent = '';
+      var re = /(\d{1,2}:\d{2}(?::\d{2})?)\s*[-–]\s*(\d{1,2}:\d{2}(?::\d{2})?)/;
+      text.split('\n').forEach(function (line) {
+        if (!line.trim()) return;
+        var div = document.createElement('div');
+        div.className = 'moment';
+        var m = line.match(re);
+        if (m && id) {
+          div.appendChild(document.createTextNode(line.slice(0, m.index)));
+          var a = document.createElement('a');
+          a.href = 'https://youtu.be/' + id + '?t=' + toSeconds(m[1]);
+          a.target = '_blank';
+          a.textContent = m[0];
+          div.appendChild(a);
+          div.appendChild(document.createTextNode(line.slice(m.index + m[0].length)));
+        } else {
+          div.textContent = line;
+        }
+        box.appendChild(div);
       });
+    }
 
-      const data = await response.json();
-      resultDiv.textContent = data.message;
+    async function processVideo() {
+      var link = document.getElementById('videoLink').value;
+      var box = document.getElementById('result');
+      box.style.display = 'block';
+      box.textContent = 'Processing... this can take up to 30 seconds.';
+      try {
+        var response = await fetch('/api/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoLink: link })
+        });
+        var data = await response.json();
+        showResult(data.message, getVideoId(link));
+      } catch (e) {
+        box.textContent = 'Something went wrong. Please try again.';
+      }
     }
   </script>
 </body>
