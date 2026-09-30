@@ -9,37 +9,49 @@ module.exports = async function (req, res) {
     }
 
     var body = req.body || {};
-    var link = decodeURIComponent(body.videoLink || '');
-    var id = '';
-
-    if (link.indexOf('youtu.be/') !== -1) {
-      id = link.split('youtu.be/')[1].slice(0, 11);
-    } else if (link.indexOf('v=') !== -1) {
-      id = link.split('v=')[1].slice(0, 11);
-    } else if (link.indexOf('shorts/') !== -1) {
-      id = link.split('shorts/')[1].slice(0, 11);
-    }
-
-    if (!id) {
-      return res.status(400).json({ message: 'Please paste a valid YouTube link.' });
-    }
-
+    var duration = body.duration || 20;
+    var customPrompt = (body.customPrompt || '').trim();
     var apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ message: 'API key is missing in Vercel.' });
     }
 
-    var videoUrl = 'https://www.youtube.com/watch?v=' + id;
-    var prompt = 'Watch this video and find the 5 best moments for short clips. For each one give: start time, end time (mm:ss), a short title, and one sentence on why it works. Use a plain numbered list, no markdown.';
+    var parts = [];
 
-    var requestBody = JSON.stringify({
-      contents: [{
-        parts: [
-          { file_data: { file_uri: videoUrl } },
-          { text: prompt }
-        ]
-      }]
-    });
+    if (body.videoBase64) {
+      parts.push({
+        inline_data: {
+          mime_type: body.mimeType || 'video/mp4',
+          data: body.videoBase64
+        }
+      });
+    } else if (body.videoLink) {
+      var link = decodeURIComponent(body.videoLink);
+      var id = '';
+      if (link.indexOf('youtu.be/') !== -1) {
+        id = link.split('youtu.be/')[1].slice(0, 11);
+      } else if (link.indexOf('v=') !== -1) {
+        id = link.split('v=')[1].slice(0, 11);
+      } else if (link.indexOf('shorts/') !== -1) {
+        id = link.split('shorts/')[1].slice(0, 11);
+      }
+      if (!id) {
+        return res.status(400).json({ message: 'Please paste a valid YouTube link.' });
+      }
+      parts.push({ file_data: { file_uri: 'https://www.youtube.com/watch?v=' + id } });
+    } else {
+      return res.status(400).json({ message: 'Please provide a video link or upload a file.' });
+    }
+
+    var prompt = 'Watch this video and find the 5 best moments for short clips, each roughly ' + duration + ' seconds long. For each one give: start time, end time (mm:ss), a short title, and one sentence on why it works. Use a plain numbered list, no markdown.';
+
+    if (customPrompt) {
+      prompt += ' Additional instructions from the user: ' + customPrompt;
+    }
+
+    parts.push({ text: prompt });
+
+    var requestBody = JSON.stringify({ contents: [{ parts: parts }] });
 
     var r;
     var data;
@@ -82,4 +94,3 @@ module.exports = async function (req, res) {
     return res.status(500).json({ message: 'Error: ' + e.message });
   }
 };
-
