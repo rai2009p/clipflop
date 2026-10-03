@@ -6,7 +6,7 @@
     body { font-family: sans-serif; max-width: 600px; margin: 60px auto; padding: 0 20px; }
     input, textarea, button { display: block; width: 100%; margin: 10px 0; padding: 10px; box-sizing: border-box; }
     textarea { font-family: inherit; resize: vertical; }
-    #result { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; display: none; }
+    #result { margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; display: none; white-space: pre-wrap; }
     .moment { margin-bottom: 14px; }
     .moment a { font-weight: bold; color: #0b57d0; }
     .durations { display: flex; gap: 8px; margin: 10px 0; }
@@ -18,14 +18,11 @@
 </head>
 <body>
   <h1>ClipFlop</h1>
-  <p>Paste a video link or upload an MP4 to find the best moments.</p>
+  <p>Paste a YouTube or Google Drive link to find the best moments.</p>
 
   <label>Video link:</label>
-  <input type="text" id="videoLink" placeholder="https://...">
-
-  <label>Or upload MP4 (small files only, under ~4MB):</label>
-  <input type="file" id="videoFile" accept="video/mp4">
-  <div id="note">Free hosting limit: keep uploads short and low quality (a few seconds).</div>
+  <input type="text" id="videoLink" placeholder="YouTube or Google Drive link">
+  <div id="note">Google Drive links must be set to "Anyone with the link can view." Long or large Drive videos may time out.</div>
 
   <label>Clip length:</label>
   <div class="durations">
@@ -89,39 +86,28 @@
       });
     }
 
-    function fileToBase64(file) {
-      return new Promise(function (resolve, reject) {
-        var reader = new FileReader();
-        reader.onload = function () {
-          resolve(reader.result.split(',')[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
     async function processVideo() {
-      var link = document.getElementById('videoLink').value;
-      var fileInput = document.getElementById('videoFile');
-      var file = fileInput.files[0];
+      var link = document.getElementById('videoLink').value.trim();
       var customPrompt = document.getElementById('customPrompt').value;
       var box = document.getElementById('result');
       box.style.display = 'block';
 
-      var body;
+      if (!link) {
+        box.textContent = 'Please paste a YouTube or Google Drive link.';
+        return;
+      }
 
-      if (file) {
-        if (file.size > 4 * 1024 * 1024) {
-          box.textContent = 'That file is too large for the free upload limit (max ~4MB). Please use a shorter or lower quality clip, or paste a YouTube link instead.';
-          return;
-        }
-        box.textContent = 'Uploading and processing... this can take up to 30 seconds.';
-        var base64 = await fileToBase64(file);
-        body = { videoBase64: base64, mimeType: file.type || 'video/mp4', duration: selectedDuration, customPrompt: customPrompt };
-      } else if (link) {
-        box.textContent = 'Processing... this can take up to 30 seconds.';
-        body = { videoLink: link, duration: selectedDuration, customPrompt: customPrompt };
-      } else {
+      box.textContent = 'Processing... Drive links can take up to a minute.';
+
+      try {
+        var response = await fetch('/api/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoLink: link, duration: selectedDuration, customPrompt: customPrompt })
+        });
+        var data = await response.json();
+        showResult(data.message, getVideoId(link));
+      } catch (e) {
         box.textContent = 'Something went wrong. Please try again.';
       }
     }
